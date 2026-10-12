@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中華職棒投打數據與趨勢分析</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js 圖表庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans antialiased min-h-screen p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- 標題與說明區 -->
+        <header class="space-y-2 bg-white p-6 rounded-2xl shadow-xs border border-gray-100">
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">中華職棒投打數據與趨勢分析 (2010–2025)</h1>
+            <p class="text-sm text-gray-600 leading-relaxed">
+                統計中華職棒歷年聯盟平均打擊率、防禦率、全壘打產量與各球隊表現。可透過下方年度滑桿與篩選器進行多維度聯動。
+            </p>
+        </header>
+
+        <!-- 篩選控制面板（類似影片中的頂部控制列） -->
+        <section class="bg-white p-5 sm:p-6 rounded-2xl shadow-xs border border-gray-100 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <!-- 年度區間滑桿 -->
+                <div class="md:col-span-3 space-y-2">
+                    <div class="flex justify-between text-sm font-semibold">
+                        <span>學年度 / 年度區間</span>
+                        <span id="yearRangeLabel" class="text-blue-600">2010 – 2025 年</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <input type="range" id="startYear" min="2010" max="2025" value="2010" class="w-full accent-blue-600 cursor-pointer">
+                        <input type="range" id="endYear" min="2010" max="2025" value="2025" class="w-full accent-blue-600 cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- 球隊篩選 -->
+                <div class="space-y-1">
+                    <label for="teamSelect" class="block text-xs font-semibold text-gray-600 uppercase">球隊篩選</label>
+                    <select id="teamSelect" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="all">全部 (全聯盟平均)</option>
+                        <option value="brothers">中信兄弟</option>
+                        <option value="unicos">統一 7-ELEVEn 獅</option>
+                        <option value="monkeys">樂天桃猿</option>
+                        <option value="guardians">富邦悍將</option>
+                        <option value="dragons">味全龍</option>
+                        <option value="hawks">台鋼雄鷹</option>
+                    </select>
+                </div>
+
+                <!-- 數據視角 -->
+                <div class="space-y-1">
+                    <label for="viewMode" class="block text-xs font-semibold text-gray-600 uppercase">主要指標類別</label>
+                    <select id="viewMode" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="standard">打擊率與防禦率綜合對比</option>
+                        <option value="power">全壘打火力專區</option>
+                    </select>
+                </div>
+
+                <!-- 按鈕區 -->
+                <div class="flex items-end pt-2 md:pt-0">
+                    <button id="resetBtn" class="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer">
+                        重設篩選條件
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 數據指標卡片總覽 -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 space-y-1">
+                <span class="text-xs font-semibold text-gray-500 uppercase">區間平均打擊率</span>
+                <div id="cardAvg" class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">.295</div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 space-y-1">
+                <span class="text-xs font-semibold text-gray-500 uppercase">區間平均防禦率</span>
+                <div id="cardEra" class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">4.12</div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 space-y-1">
+                <span class="text-xs font-semibold text-gray-500 uppercase">區間總全壘打數</span>
+                <div id="cardHr" class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">1,420支</div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 space-y-1">
+                <span class="text-xs font-semibold text-gray-500 uppercase">最高峰球季</span>
+                <div id="cardPeak" class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">2020年</div>
+            </div>
+        </section>
+
+        <!-- 下方雙欄圖表區（類似影片中的左右兩張圖表並排） -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 左側圖表：打擊率趨勢 -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-xs border border-gray-100 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-base font-bold text-gray-900">歷年平均打擊率 (AVG) 趨勢</h2>
+                    <span class="text-xs text-gray-400 font-medium">單位：比率</span>
+                </div>
+                <div class="relative w-full h-72">
+                    <canvas id="leftChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 右側圖表：全壘打產量 -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-xs border border-gray-100 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-base font-bold text-gray-900">歷年總全壘打產量</h2>
+                    <span class="text-xs text-gray-400 font-medium">單位：支</span>
+                </div>
+                <div class="relative w-full h-72">
+                    <canvas id="rightChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- 互動邏輯與模擬資料 -->
+    <script>
+        const rawData = [
+            { year: 2010, avg: 0.282, era: 3.95, hr: 512 },
+            { year: 2011, avg: 0.275, era: 3.82, hr: 432 },
+            { year: 2012, avg: 0.278, era: 3.88, hr: 410 },
+            { year: 2013, avg: 0.289, era: 4.15, hr: 490 },
+            { year: 2014, avg: 0.293, era: 4.42, hr: 550 },
+            { year: 2015, avg: 0.303, era: 4.98, hr: 688 },
+            { year: 2016, avg: 0.308, era: 5.32, hr: 837 },
+            { year: 2017, avg: 0.306, era: 5.12, hr: 732 },
+            { year: 2018, avg: 0.305, era: 5.01, hr: 710 },
+            { year: 2019, avg: 0.310, era: 5.38, hr: 867 },
+            { year: 2020, avg: 0.325, era: 5.85, hr: 995 },
+            { year: 2021, avg: 0.276, era: 4.02, hr: 462 },
+            { year: 2022, avg: 0.268, era: 3.55, hr: 398 },
+            { year: 2023, avg: 0.272, era: 3.68, hr: 420 },
+            { year: 2024, avg: 0.274, era: 3.62, hr: 445 },
+            { year: 2025, avg: 0.278, era: 3.75, hr: 470 }
+        ];
+
+        let leftChartInstance = null;
+        let rightChartInstance = null;
+
+        const startYearInput = document.getElementById('startYear');
+        const endYearInput = document.getElementById('endYear');
+        const yearRangeLabel = document.getElementById('yearRangeLabel');
+        const teamSelect = document.getElementById('teamSelect');
+        const viewMode = document.getElementById('viewMode');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function getFilteredData() {
+            let sYear = parseInt(startYearInput.value);
+            let eYear = parseInt(endYearInput.value);
+            if (sYear > eYear) {
+                [sYear, eYear] = [eYear, sYear];
+            }
+            yearRangeLabel.innerText = `${sYear} – ${eYear} 年`;
+
+            let modifier = 1.0;
+            const team = teamSelect.value;
+            if (team === 'brothers') modifier = 1.02;
+            if (team === 'unicos') modifier = 0.99;
+            if (team === 'monkeys') modifier = 1.03;
+
+            return rawData.filter(d => d.year >= sYear && d.year <= eYear).map(d => ({
+                year: d.year,
+                avg: parseFloat((d.avg * modifier).toFixed(3)),
+                era: parseFloat((d.era * (2 - modifier)).toFixed(2)),
+                hr: Math.round(d.hr * modifier)
+            }));
+        }
+
+        function updateCards(filtered) {
+            if (filtered.length === 0) return;
+
+            const avgSum = filtered.reduce((acc, cur) => acc + cur.avg, 0);
+            const eraSum = filtered.reduce((acc, cur) => acc + cur.era, 0);
+            const hrSum = filtered.reduce((acc, cur) => acc + cur.hr, 0);
+            
+            document.getElementById('cardAvg').innerText = (avgSum / filtered.length).toFixed(3);
+            document.getElementById('cardEra').innerText = (eraSum / filtered.length).toFixed(2);
+            document.getElementById('cardHr').innerText = hrSum.toLocaleString() + '支';
+
+            let peak = filtered.reduce((max, cur) => cur.avg > max.avg ? cur : max, filtered[0]);
+            document.getElementById('cardPeak').innerText = peak.year + '年';
+        }
+
+        function renderCharts() {
+            const filtered = getFilteredData();
+            updateCards(filtered);
+
+            const labels = filtered.map(d => d.year + '年');
+
+            // 銷毀舊圖表
+            if (leftChartInstance) leftChartInstance.destroy();
+            if (rightChartInstance) rightChartInstance.destroy();
+
+            // 左側圖表
+            const ctxLeft = document.getElementById('leftChart').getContext('2d');
+            leftChartInstance = new Chart(ctxLeft, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '平均打擊率 (AVG)',
+                        data: filtered.map(d => d.avg),
+                        borderColor: '#2563eb',
+                        backgroundColor: '#2563eb22',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { grid: { color: '#f3f4f6' } }, x: { grid: { display: false } } }
+                }
+            });
+
+            // 右側圖表
+            const ctxRight = document.getElementById('rightChart').getContext('2d');
+            rightChartInstance = new Chart(ctxRight, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '全壘打總數 (支)',
+                        data: filtered.map(d => d.hr),
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { grid: { color: '#f3f4f6' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        // 事件綁定
+        startYearInput.addEventListener('input', renderCharts);
+        endYearInput.addEventListener('input', renderCharts);
+        teamSelect.addEventListener('change', renderCharts);
+        viewMode.addEventListener('change', renderCharts);
+
+        resetBtn.addEventListener('click', () => {
+            startYearInput.value = 2010;
+            endYearInput.value = 2025;
+            teamSelect.value = 'all';
+            viewMode.value = 'standard';
+            renderCharts();
+        });
+
+        // 初始化
+        renderCharts();
+    </script>
+</body>
+</html>
